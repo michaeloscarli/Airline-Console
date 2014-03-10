@@ -1,0 +1,58 @@
+'''
+Created on Feb 27, 2014
+
+@author: Oscar
+'''
+import unittest
+import os,sys,inspect
+currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
+parentdir = os.path.dirname(currentdir)
+sys.path.insert(0,parentdir)
+
+from Node import Metro
+
+class TestNode(unittest.TestCase):
+
+    '''
+    Sets up a simple Metro object to run tests on
+    '''
+    def setUp(self):
+        self.metro = Metro("NYC", "New York City", "United States", 
+                      "North America", 69, {"W": 69, "N": 69}, 
+                      6969696969, 455, {"testRoute": None})
+    '''
+    Tests the constructor for the Metro class. Ensures that things
+    are being initialized properly.
+    '''
+    def testConstructor(self):
+        self.assertEqual("NYC", self.metro.code)
+        self.assertEqual("New York City", self.metro.name)
+        self.assertEqual("United States", self.metro.country)
+        self.assertEqual("North America", self.metro.continent)
+        self.assertEqual(69, self.metro.timezone)
+        self.assertEqual(69, self.metro.coordinates["W"])
+        self.assertEqual(69, self.metro.coordinates["N"])
+        self.assertEqual(6969696969, self.metro.population)
+        self.assertEqual(455, self.metro.region)
+        self.assertEqual(None, self.metro.routes["testRoute"])
+    
+    '''
+    Tests to make sure that a Metro has the right values in its variables
+    before print statements are called on its variables to display its information
+    '''
+    def testPrintInformation(self):
+        self.assertEqual("NYC", self.metro.code)
+        self.assertEqual("New York City", self.metro.name)
+        self.assertEqual("United States", self.metro.country)
+        self.assertEqual("North America", self.metro.continent)
+        self.assertEqual(69, self.metro.timezone)
+        self.assertEqual(69, self.metro.coordinates["W"])
+        self.assertEqual(69, self.metro.coordinates["N"])
+        self.assertEqual(6969696969, self.metro.population)
+        self.assertEqual(455, self.metro.region)
+        self.assertEqual(None, self.metro.routes["testRoute"])
+
+
+if __name__ == "__main__":
+    #import sys;sys.argv = ['', 'Test.testName']
+    unittest.main()

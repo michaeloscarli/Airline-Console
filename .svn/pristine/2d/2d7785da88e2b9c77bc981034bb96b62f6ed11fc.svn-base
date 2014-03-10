@@ -1,0 +1,171 @@
+'''
+Created on Mar 3, 2014
+
+@author: Oscar
+'''
+import json
+import numpy as np
+import webbrowser
+from Edge import Route
+from Node import Metro
+
+class Network(object):
+    '''
+    The graph class that represents an airline's network
+    '''
+    listOfMetros = {}   #Where Key is the country's code
+    listOfRoutes = []   #A list of the routes
+    cityData = []       #The city data directly parsed from the .json file
+    routeData = []      #The route data directly parsed from the.json file
+
+    def __init__(self, jsonData):
+        data = json.loads(open(jsonData).read()) #The data that is read from the .json file
+        self.cityData = data["metros"]
+        self.routeData = data["routes"]
+        self.makeListOfMetros()
+        self.makeListOfRoutes()
+        self.changeKeyToName()
+
+    def printCities(self):
+        '''
+        Prints all cities serviced by CSAir by iterating through listOfMetros
+        '''
+        locations = [str(city) for city in self.listOfMetros]
+        print ", ".join(locations)
+    
+    def printCityInformation(self):
+        '''
+        Prints all the information about a city by calling each city's printInformation function    
+        '''
+        userQuery = raw_input("What city would you like to know about? ")
+        self.listOfMetros[userQuery].printInformation()
+    
+    
+    def printLongestFlight(self):
+        '''    
+        Prints the longest flight that is serviced by CSAir by using max over the route list 
+        '''    
+        longestRoute = self.listOfRoutes[0]
+        for route in self.listOfRoutes:
+            if route.distance > longestRoute.distance:
+                longestRoute = route
+            
+        print "The longest flight is between", longestRoute.origin.name + " and", longestRoute.destination.name + "."
+    
+    
+    def printShortestFlight(self):
+        '''    
+        Prints the shortest flight that is serviced by CSAir by using min over the route list
+        '''
+        shortestRoute = self.listOfRoutes[0]
+        for route in self.listOfRoutes:
+            if route.distance < shortestRoute.distance:
+                shortestRoute = route
+            
+        print "The shortest flight is between", shortestRoute.origin.name + " and", shortestRoute.destination.name + "."
+    
+    def printAverageFlightDistance(self):
+        '''
+        Prints the average flight distance of all routes serviced by CSAir by using np.mean over the route list
+        '''
+        distances = []
+        for route in self.listOfRoutes:
+            distances.append(route.distance)
+        print "The average flight distance is: " + str(np.mean(distances)) + " miles."
+    
+    
+    def printCityWithLargestPop(self):
+        '''
+        Prints the largest city (by population) that is serviced by CSAir by iterating over the city list and comparing populations
+        '''
+        largestCity = self.listOfMetros.keys()[0]
+        for key in self.listOfMetros:
+            if self.listOfMetros[largestCity].population < self.listOfMetros[key].population:
+                largestCity = self.listOfMetros[key].name
+        print "The largest city by population is:", largestCity
+    
+    def printCityWithSmallestPop(self):
+        '''
+        Prints the smallest city (by population) that is serviced by CSAir by iterating over the city list and comparing populations
+        '''
+        smallestCity = self.listOfMetros.keys()[0]
+        for key in self.listOfMetros:
+            if self.listOfMetros[smallestCity].population > self.listOfMetros[key].population:
+                smallestCity = self.listOfMetros[key].name
+        print "The smallest city by population is:", smallestCity
+    
+    def printAverageCityPop(self):
+        '''    
+        Prints the average population of cities serviced by CSAir by iterating over the entire city list and average populations
+        '''
+        populations = [self.listOfMetros[key].population for key in self.listOfMetros]
+        print "The average population of serviced cities is:", np.mean(populations)
+    
+    def printContinentsAndCities(self):
+        '''
+        Prints a list of serviced continents and cities by interating 
+        '''
+        continents = {"North America": [], "South America": [], "Europe": [], "Asia": [], "Africa": [], "Antarctica": [], "Australia": []}
+        for key in self.listOfMetros:
+            continents[self.listOfMetros[key].continent].append(self.listOfMetros[key].name)
+        for continent in continents:
+            if len(continents[continent])!=0:
+                print continent + ": " + ', '.join(continents[continent])
+    
+    def printHubCities(self):
+        '''
+        Prints a list of CSAir's hub cities
+        '''
+        maxRoutes = 0
+        hubCities = []
+        for key in self.listOfMetros:
+            if len(self.listOfMetros[key].routes) > maxRoutes:
+                maxRoutes = len(self.listOfMetros[key].routes)
+        for key in self.listOfMetros:
+            if len(self.listOfMetros[key].routes) == maxRoutes:
+                hubCities.append(self.listOfMetros[key].name)
+        print "CSAir's hub cities are: " + ', '.join(hubCities)
+    
+    def openRouteMap(self):
+        '''
+        Opens a map of the routes serviced by CSAir    
+        '''
+        flightList = []
+        for route in self.routeData:
+            flightList.append(route["ports"][0] + "-" + route["ports"][1])
+        urlString = "http://www.gcmap.com/mapui?P="
+        urlString += ",+".join(flightList)
+        webbrowser.open(urlString)
+    
+    def makeListOfMetros(self):
+        '''
+        Compiles the dictionary of metros by iterating through the cityData list parsed from the json file
+        ''' 
+        for x in range (0,len(self.cityData)):
+            self.listOfMetros[self.cityData[x]['code']] = Metro(self.cityData[x]['code'], self.cityData[x]['name'], self.cityData[x]['country'], 
+                                                      self.cityData[x]['continent'], self.cityData[x]['timezone'], self.cityData[x]['coordinates'], 
+                                                      self.cityData[x]['population'], self.cityData[x]['region'], {})
+         
+    def makeListOfRoutes(self):
+        '''
+        Compiles the list of routes by iterating through the routeData list parsed from the json file
+        Also adds the route to its corresponding cities
+        '''   
+        for x in range(0,len(self.routeData)):
+            #Adds the routes to the dictionary
+            route = Route(self.listOfMetros[self.routeData[x]['ports'][0]], self.listOfMetros[self.routeData[x]['ports'][1]], self.routeData[x]['distance'])
+            returnRoute = Route(self.listOfMetros[self.routeData[x]['ports'][1]], self.listOfMetros[self.routeData[x]['ports'][0]], self.routeData[x]['distance'])
+            self.listOfRoutes.append(route)
+        
+            #Add the route to the specific city
+            self.listOfMetros[self.routeData[x]['ports'][0]].routes[self.routeData[x]['ports'][1]] = route
+            self.listOfMetros[self.routeData[x]['ports'][1]].routes[self.routeData[x]['ports'][0]] = returnRoute
+    
+    '''
+    changes the key of the dictionary listOfMetros from codes of cities to names
+    '''        
+    def changeKeyToName(self):
+        for key in self.listOfMetros:
+            name = self.listOfMetros[key].name
+            self.listOfMetros[str(name)] = self.listOfMetros.pop(key)
+            

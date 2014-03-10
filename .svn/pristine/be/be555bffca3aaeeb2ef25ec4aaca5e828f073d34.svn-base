@@ -1,0 +1,221 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Mon Feb 24 14:00:45 2014
+
+@author: Oscar
+"""
+
+import json
+import fileinput
+import Node
+import Edge
+import sys
+import numpy as np
+import webbrowser
+from Node import Metro
+from Edge import Route
+
+
+listOfMetros = {}   #Where Key is the country's code
+listOfRoutes = []   #A list of the routes
+userQuery = ""      #The buffer that holds the user input
+data = json.loads(open('map_data.json').read()) #The data that is read from the .json file
+
+cityData = data["metros"]   #A list of the metro data
+routeData = data["routes"]  #A list of the route data
+
+'''
+Prints the options available to the user upon menu startup
+'''
+def printOptions():
+    options = [str(x) + ". " + commands[x][0] for x in range(0, len(commands))]
+    print '\n'.join(options)
+
+'''
+Prints all cities serviced by CSAir by iterating through listOfMetros
+'''
+def printCities():
+    locations = [str(city) for city in listOfMetros]
+    print ", ".join(locations)
+
+'''
+Prints all the information about a city by calling each city's printInformation function    
+'''
+def printCityInformation():
+    userQuery = raw_input("What city would you like to know about? ")
+    listOfMetros[userQuery].printInformation()
+
+'''    
+Prints the longest flight that is serviced by CSAir by using max over the route list 
+'''
+def printLongestFlight():
+    longestRoute = listOfRoutes[0]
+    for route in listOfRoutes:
+        if route.distance > longestRoute.distance:
+            longestRoute = route
+        
+    print "The longest flight is between", longestRoute.origin.name + " and", longestRoute.destination.name + "."
+
+
+def printShortestFlight():
+    '''    
+    Prints the shortest flight that is serviced by CSAir by using min over the route list
+    '''
+    shortestRoute = listOfRoutes[0]
+    for route in listOfRoutes:
+        if route.distance < shortestRoute.distance:
+            shortestRoute = route
+        
+    print "The shortest flight is between", shortestRoute.origin.name + " and", shortestRoute.destination.name + "."
+
+'''
+Prints the average flight distance of all routes serviced by CSAir by using np.mean over the route list
+'''
+def printAverageFlightDistance():
+    distances = []
+    for route in listOfRoutes:
+        distances.append(route.distance)
+    print "The average flight distance is: " + str(np.mean(distances)) + " miles."
+
+'''
+Prints the largest city (by population) that is serviced by CSAir by iterating over the city list and comparing populations
+'''
+def printCityWithLargestPop():
+    largestCity = listOfMetros.keys()[0]
+    for key in listOfMetros:
+        if listOfMetros[largestCity].population < listOfMetros[key].population:
+            largestCity = listOfMetros[key].name
+    print "The largest city by population is:", largestCity
+
+'''
+Prints the smallest city (by population) that is serviced by CSAir by iterating over the city list and comparing populations
+'''
+def printCityWithSmallestPop():
+    smallestCity = listOfMetros.keys()[0]
+    for key in listOfMetros:
+        if listOfMetros[smallestCity].population > listOfMetros[key].population:
+            smallestCity = listOfMetros[key].name
+    print "The smallest city by population is:", smallestCity
+
+'''    
+Prints the average population of cities serviced by CSAir by iterating over the entire city list and average populations
+'''
+def printAverageCityPop():
+    populations = [listOfMetros[key].population for key in listOfMetros]
+    print "The average population of serviced cities is:", np.mean(populations)
+
+'''
+Prints a list of serviced continents and cities by interating 
+'''
+def printContinentsAndCities():
+    continents = {"North America": [], "South America": [], "Europe": [], "Asia": [], "Africa": [], "Antarctica": [], "Australia": []}
+    for key in listOfMetros:
+        continents[listOfMetros[key].continent].append(listOfMetros[key].name)
+    for continent in continents:
+        if len(continents[continent])!=0:
+            print continent + ": " + ', '.join(continents[continent])
+
+'''
+Prints a list of CSAir's hub cities
+'''
+def printHubCities():
+    maxRoutes = 0
+    hubCities = []
+    for key in listOfMetros:
+        if len(listOfMetros[key].routes) > maxRoutes:
+            maxRoutes = len(listOfMetros[key].routes)
+    for key in listOfMetros:
+        if len(listOfMetros[key].routes) == maxRoutes:
+            hubCities.append(listOfMetros[key].name)
+    print "CSAir's hub cities are: " + ', '.join(hubCities)
+
+'''
+Opens a map of the routes serviced by CSAir    
+'''
+def openRouteMap():
+    flightList = []
+    for route in routeData:
+        flightList.append(route["ports"][0] + "-" + route["ports"][1])
+    urlString = "http://www.gcmap.com/mapui?P="
+    urlString += ",+".join(flightList)
+    webbrowser.open(urlString)
+        
+'''    
+Exits the while loop by calling system's exit function
+'''
+def exitLoop():
+    print "Thank you for using CSAir!"
+    sys.exit()
+
+'''
+Compiles the dictionary of metros by iterating through the cityData list parsed from the json file
+''' 
+def makeListOfMetros(cityData):
+    for x in range (0,len(cityData)):
+        listOfMetros[cityData[x]['code']] = Metro(cityData[x]['code'], cityData[x]['name'], cityData[x]['country'], 
+                                                  cityData[x]['continent'], cityData[x]['timezone'], cityData[x]['coordinates'], 
+                                                  cityData[x]['population'], cityData[x]['region'], {})
+'''
+Compiles the list of routes by iterating through the routeData list parsed from the json file
+Also adds the route to its corresponding cities
+'''        
+def makeListOfRoutes(cityData, listOfMetros):
+    for x in range(0,len(routeData)):
+        #Adds the routes to the dictionary
+        route = Route(listOfMetros[routeData[x]['ports'][0]], listOfMetros[routeData[x]['ports'][1]], routeData[x]['distance'])
+        returnRoute = Route(listOfMetros[routeData[x]['ports'][1]], listOfMetros[routeData[x]['ports'][0]], routeData[x]['distance'])
+        listOfRoutes.append(route)
+    
+        #Add the route to the specific city
+        listOfMetros[routeData[x]['ports'][0]].routes[routeData[x]['ports'][1]] = route
+        listOfMetros[routeData[x]['ports'][1]].routes[routeData[x]['ports'][0]] = returnRoute
+
+'''
+changes the key of the dictionary listOfMetros from codes of cities to names
+'''        
+def changeKeyToName(listOfMetros):
+    for key in listOfMetros:
+        name = listOfMetros[key].name
+        listOfMetros[str(name)] = listOfMetros.pop(key)
+   
+    
+'''
+A list of commands that includes the text printed for the query, and the function called as a result of selecting that query
+'''
+commands = [["Print serviced cities.", printCities],
+            ["Print a list of serviced continents with their serviced cities", printContinentsAndCities],
+            ["Print city information.", printCityInformation],
+            ["Print the longest flight.", printLongestFlight],
+            ["Print the shortest flight.", printShortestFlight],
+            ["Print the average flight distance.", printAverageFlightDistance],
+            ["Print the largest city (by population) serviced.", printCityWithLargestPop],
+            ["Print the smallest city (by population) serviced.", printCityWithSmallestPop],
+            ["Print the average population of cities serviced.", printAverageCityPop],
+            ["Print CSAir's hub cities.", printHubCities],
+            ["Open a map of CSAir's service routes.", openRouteMap],
+            ["Exit", exitLoop]
+            ]    
+
+
+'''
+The main code that is actually executed
+'''
+makeListOfMetros(cityData)
+makeListOfRoutes(routeData,listOfMetros)
+changeKeyToName(listOfMetros)
+    
+print "Welcome to the CSAir menu!"
+while userQuery != "exit":
+    printOptions()
+    userQuery = raw_input("Please enter the number that matches your query. ")
+    try:
+        userQuery = int(userQuery)
+        commands[userQuery][1]()
+
+    except SystemExit as e:
+        sys.exit()
+    except:
+        print ("Please enter a valid input")
+        
+        
+    

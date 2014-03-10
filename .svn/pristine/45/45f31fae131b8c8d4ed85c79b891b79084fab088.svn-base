@@ -1,0 +1,46 @@
+'''
+Created on Feb 25, 2014
+
+@author: Oscar
+'''
+
+class Metro(object):
+    code = ""
+    name = ""
+    country = ""
+    continent = ""
+    timezone = 0
+    coordinates = {}
+    population = 0
+    region = 0
+    routes = {}    #Where Key is the destination country
+    
+    def __init__(self, code, name, country, continent, timezone, coordinates, population, region, routes):
+        self.code = code
+        self.name = name
+        self.country = country
+        self.continent = continent
+        self.timezone = timezone
+        self.coordinates = coordinates
+        self.population = population 
+        self.region = region
+        self.routes = routes
+        
+    def printInformation(self):
+        destinations = ""
+        print "Code: " + self.code
+        print "Name: " + self.name
+        print "Country: " + self.country
+        print "Continent: " + self.continent
+        print "Timezone:", self.timezone
+        print "Coordinates:",
+        for key in self.coordinates:
+            print key + ":", self.coordinates[key],
+        print
+        print "Population:", self.population
+        print "Region:", self.region
+        print "Destinations:",
+        destinations = [(self.routes[key].destination.name + " at " + str(self.routes[key].distance) + " miles") for key in self.routes]
+        print ", ".join(destinations)
+        
+        

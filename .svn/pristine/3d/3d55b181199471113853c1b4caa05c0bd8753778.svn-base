@@ -1,0 +1,63 @@
+'''
+Created on Mar 6, 2014
+
+@author: Oscar
+'''
+import unittest
+import json
+from Graph import Network
+from Node import Metro
+from Edge import Route
+
+
+class Test(unittest.TestCase):
+
+
+    def setUp(self):
+        data = json.loads(open("../map_data.json").read())
+        self.CSAir = Network(data)
+
+    def tearDown(self):
+        del self.CSAir
+
+
+    def test_graph(self):
+        origin = "Hong Kong"
+        travel_list = ["Taipei", "Hong Kong"]
+        '''
+        Tests the calculations
+        '''
+        self.assertEquals(524.55, self.CSAir.calculate_cost(origin, travel_list))
+        self.assertEquals(1614, self.CSAir.calculate_distance(origin, travel_list))
+        self.assertEquals(233.12, self.CSAir.calculate_time(origin, travel_list))
+        
+        '''
+        Tests add city
+        '''
+        city = Metro("ABC", "Jersey City", "United States", "North America", 3, {"N": 25, "W": 14}, 41232312, 11, {})
+        self.CSAir.list_of_metros[city.name] = city
+        self.assertEquals(True, self.CSAir.list_of_metros.has_key("Jersey City"))
+        
+        '''
+        Tests remove city
+        '''
+        removedCity = self.CSAir.list_of_metros.pop("Jersey City")
+        for route in removedCity.routes:
+            destinationCity = removedCity.routes[route].destination
+            for returnRoute in destinationCity.routes.keys():
+                if returnRoute == removedCity.code:
+                    del destinationCity.routes[returnRoute]
+        self.CSAir.list_of_routes = [route for route in self.CSAir.list_of_routes if not (route.destination.name == "Jersey City" or 
+                                                                                      route.origin.name == "Jerey City")]
+        self.assertEquals(False, self.CSAir.list_of_metros.has_key("Jersey City"))
+        
+        
+        
+        
+        
+        
+
+
+if __name__ == "__main__":
+    #import sys;sys.argv = ['', 'Test.testName']
+    unittest.main()

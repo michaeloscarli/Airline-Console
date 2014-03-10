@@ -1,0 +1,463 @@
+'''
+Created on Mar 3, 2014
+
+@author: Oscar
+'''
+import copy
+import json
+import numpy as np
+import webbrowser
+from Edge import Route
+from Node import Metro
+
+class Network(object):
+    '''
+    The graph class that represents an airline's network
+    '''
+    listOfMetros = {}   #Where Key is the country's code
+    listOfRoutes = []   #A list of the routes
+    cityData = []       #The city data directly parsed from the .json file
+    routeData = []      #The route data directly parsed from the.json file
+
+    def __init__(self, data):
+        self.cityData = data["metros"]
+        self.routeData = data["routes"]
+        self.makeListOfMetros()
+        self.makeListOfRoutes()
+        self.changeKeyToName()
+
+    def printCities(self):
+        '''
+        Prints all cities serviced by CSAir by iterating through listOfMetros
+        '''
+        locations = [str(city) for city in self.listOfMetros]
+        print ", ".join(locations)
+    
+    def printCityInformation(self):
+        '''
+        Prints all the information about a city by calling each city's printInformation function    
+        '''
+        userQuery = raw_input("What city would you like to know about? ")
+        self.listOfMetros[userQuery].printInformation()
+    
+    
+    def printLongestFlight(self):
+        '''    
+        Prints the longest flight that is serviced by CSAir by using max over the route list 
+        '''    
+        longestRoute = self.listOfRoutes[0]
+        for route in self.listOfRoutes:
+            if route.distance > longestRoute.distance:
+                longestRoute = route
+            
+        print "The longest flight is between", longestRoute.origin.name + " and", longestRoute.destination.name + "."
+    
+    
+    def printShortestFlight(self):
+        '''    
+        Prints the shortest flight that is serviced by CSAir by using min over the route list
+        '''
+        shortestRoute = self.listOfRoutes[0]
+        for route in self.listOfRoutes:
+            if route.distance < shortestRoute.distance:
+                shortestRoute = route
+            
+        print "The shortest flight is between", shortestRoute.origin.name + " and", shortestRoute.destination.name + "."
+    
+    def printAverageFlightDistance(self):
+        '''
+        Prints the average flight distance of all routes serviced by CSAir by using np.mean over the route list
+        '''
+        distances = []
+        for route in self.listOfRoutes:
+            distances.append(route.distance)
+        print "The average flight distance is: " + str(np.mean(distances)) + " kilometers."
+    
+    
+    def printCityWithLargestPop(self):
+        '''
+        Prints the largest city (by population) that is serviced by CSAir by iterating over the city list and comparing populations
+        '''
+        largestCity = self.listOfMetros.keys()[0]
+        for key in self.listOfMetros:
+            if self.listOfMetros[largestCity].population < self.listOfMetros[key].population:
+                largestCity = self.listOfMetros[key].name
+        print "The largest city by population is:", largestCity
+    
+    def printCityWithSmallestPop(self):
+        '''
+        Prints the smallest city (by population) that is serviced by CSAir by iterating over the city list and comparing populations
+        '''
+        smallestCity = self.listOfMetros.keys()[0]
+        for key in self.listOfMetros:
+            if self.listOfMetros[smallestCity].population > self.listOfMetros[key].population:
+                smallestCity = self.listOfMetros[key].name
+        print "The smallest city by population is:", smallestCity
+    
+    def printAverageCityPop(self):
+        '''    
+        Prints the average population of cities serviced by CSAir by iterating over the entire city list and average populations
+        '''
+        populations = [self.listOfMetros[key].population for key in self.listOfMetros]
+        print "The average population of serviced cities is:", np.mean(populations)
+    
+    def printContinentsAndCities(self):
+        '''
+        Prints a list of serviced continents and cities by interating 
+        '''
+        continents = {"North America": [], "South America": [], "Europe": [], "Asia": [], "Africa": [], "Antarctica": [], "Australia": []}
+        for key in self.listOfMetros:
+            continents[self.listOfMetros[key].continent].append(self.listOfMetros[key].name)
+        for continent in continents:
+            if len(continents[continent])!=0:
+                print continent + ": " + ', '.join(continents[continent])
+    
+    def printHubCities(self):
+        '''
+        Prints a list of CSAir's hub cities
+        '''
+        maxRoutes = 0
+        hubCities = []
+        for key in self.listOfMetros:
+            if len(self.listOfMetros[key].routes) > maxRoutes:
+                maxRoutes = len(self.listOfMetros[key].routes)
+        for key in self.listOfMetros:
+            if len(self.listOfMetros[key].routes) == maxRoutes:
+                hubCities.append(self.listOfMetros[key].name)
+        print "CSAir's hub cities are: " + ', '.join(hubCities)
+    
+    def openRouteMap(self):
+        '''
+        Opens a map of the routes serviced by CSAir    
+        '''
+        flightList = []
+        for route in self.routeData:
+            flightList.append(route["ports"][0] + "-" + route["ports"][1])
+        urlString = "http://www.gcmap.com/mapui?P="
+        urlString += ",+".join(flightList)
+        webbrowser.open(urlString)
+    
+    def makeListOfMetros(self):
+        '''
+        Compiles the dictionary of metros by iterating through the cityData list parsed from the json file
+        ''' 
+        for x in range (0,len(self.cityData)):
+            self.listOfMetros[self.cityData[x]['code']] = Metro(self.cityData[x]['code'], self.cityData[x]['name'], self.cityData[x]['country'], 
+                                                      self.cityData[x]['continent'], self.cityData[x]['timezone'], self.cityData[x]['coordinates'], 
+                                                      self.cityData[x]['population'], self.cityData[x]['region'], {})
+         
+    def makeListOfRoutes(self):
+        '''
+        Compiles the list of routes by iterating through the routeData list parsed from the json file
+        Also adds the route to its corresponding cities
+        '''   
+        for x in range(0,len(self.routeData)):
+            #Adds the routes to the dictionary
+            route = Route(self.listOfMetros[self.routeData[x]['ports'][0]], self.listOfMetros[self.routeData[x]['ports'][1]], self.routeData[x]['distance'])
+            returnRoute = Route(self.listOfMetros[self.routeData[x]['ports'][1]], self.listOfMetros[self.routeData[x]['ports'][0]], self.routeData[x]['distance'])
+            self.listOfRoutes.append(route)
+        
+            #Add the route to the specific city
+            self.listOfMetros[self.routeData[x]['ports'][0]].routes[self.routeData[x]['ports'][1]] = route
+            self.listOfMetros[self.routeData[x]['ports'][1]].routes[self.routeData[x]['ports'][0]] = returnRoute
+        
+    def changeKeyToName(self):
+        '''
+        changes the key of the dictionary listOfMetros from codes of cities to names
+        '''  
+        for key in self.listOfMetros:
+            name = self.listOfMetros[key].name
+            self.listOfMetros[str(name)] = self.listOfMetros.pop(key)
+            
+    def removeCity(self):
+        '''
+        removes a city from the graph
+        '''
+        userQuery = raw_input("Please enter the city you would like to remove. ")
+        removedCity = self.listOfMetros.pop(userQuery)
+        for route in removedCity.routes:
+            destinationCity = removedCity.routes[route].destination
+            for returnRoute in destinationCity.routes.keys():
+                if returnRoute == removedCity.code:
+                    del destinationCity.routes[returnRoute]
+        self.listOfRoutes = [route for route in self.listOfRoutes if not (route.destination.name == userQuery or route.origin.name == userQuery)]
+        print self.listOfRoutes            
+                    
+    def removeRoute(self):
+        '''
+        removes a route connecting cityOne and cityTwo from the graph
+        '''
+        
+        userQueryOne = ""      #The buffer that holds the user input
+        userQueryOne = raw_input("Please enter the first city of the route you want to remove. ")
+        
+        userQueryTwo = ""
+        userQueryTwo = raw_input("Please enter the second city of the route you want to remove. ")
+        
+        cityOne = self.listOfMetros[userQueryOne]
+        cityTwo = self.listOfMetros[userQueryTwo]        
+        self.listOfRoutes = [route for route in self.listOfRoutes if not ((route.destination.name == cityOne.name and route.origin.name == cityTwo.name)
+                                                                          or (route.destination.name == cityTwo.name and route.origin.name == cityOne.name))]
+        
+        for destination in cityOne.routes.keys():
+            if (destination == cityTwo.code):
+                del cityOne.routes[destination]
+                    
+        for destination in cityTwo.routes.keys():
+            if (destination == cityOne.code):
+                del cityTwo.routes[destination]
+                
+    def addCity(self):
+        '''
+        Adds a city (node) to the graph
+        '''
+        code = raw_input("What is the metro's code? ")
+        name = raw_input("What is the metro's name? ")
+        country = raw_input("Where country is the metro in? ")
+        continent = raw_input("What continent is the metro in? ")
+        timezone = raw_input("What timezone is the metro in? ")
+        coordOneDir = raw_input("What is the first heading of the coordinate? ")
+        coordOneVal = raw_input("What is the degree of the first heading? ")
+        coordTwoDir = raw_input("What is the second heading of the coordinate? ")
+        coordTwoVal = raw_input("What is the degree of the second heading? ")
+        coordinates = {coordOneDir: coordOneVal, coordTwoDir: coordTwoVal}
+        population = raw_input("What is the population of the metro? ")
+        region = raw_input("What is the region of the metro? ")
+        city = Metro(code, name, country, continent, timezone, coordinates, population, region, {})
+        self.listOfMetros[city.name] = city
+        city.printInformation()
+        
+    def addRoute(self):
+        '''
+        Adds a route (edge) to the graph
+        '''
+        userQueryOne = raw_input("Please enter the first city of the route you want to add. ")
+        userQueryTwo = raw_input("Please enter the second city of the route you want to add. ")
+        routeDistance = raw_input("Please enter the distance between the two cities. ")
+        
+        cityOne = self.listOfMetros[userQueryOne]
+        cityTwo = self.listOfMetros[userQueryTwo]
+        
+        route = Route(cityOne, cityTwo, routeDistance)
+        returnRoute = Route(cityTwo, cityOne, routeDistance)
+        
+        cityOne.routes[cityTwo.code] = route
+        cityTwo.routes[cityOne.code] = returnRoute
+        
+        self.listOfRoutes.append(route)
+        
+    def editCity(self):
+        '''
+        Edits a specified city
+        '''
+        city = raw_input("What city would you like to edit? ")
+        city = self.listOfMetros[city]
+        attribute = raw_input("Which attribute would you like to edit? ")
+        if (attribute == "code"):
+            change = raw_input("What would you like to change " + attribute + " to? ")
+            city.setCode(change)
+        elif (attribute == "name"):
+            change = raw_input("What would you like to change " + attribute + " to? ")
+            self.listOfMetros[change] = city
+            del self.listOfMetros[city.name]
+            city.setName(change)
+        elif (attribute == "country"):
+            change = raw_input("What would you like to change " + attribute + " to? ")
+            city.setCountry(change)
+        elif (attribute == "continent"):
+            change = raw_input("What would you like to change " + attribute + " to? ")
+            city.setContinent(change)
+        elif (attribute == "timezone"):
+            change = raw_input("What would you like to change " + attribute + " to? ")
+            city.setTimezone(change)
+        elif (attribute == "coordinates"):
+            city.setCoordinates()
+        elif (attribute == "population"):
+            change = raw_input("What would you like to change " + attribute + " to? ")
+            city.setPopulation(change)
+        elif (attribute == "region"):
+            change = raw_input("What would you like to change " + attribute + " to? ")
+            city.setRegion(change)
+
+    def saveToFile(self):
+        '''
+        saves the current network to a user-specified file name
+        '''
+        fileName = raw_input('Where would you like to save the network data? Please end the name with ".json')
+        jsonFile = {}
+        jsonFile["data sources"] = ["http://www.gcmap.com/" ,
+                                    "http://www.theodora.com/country_digraphs.html" ,
+                                    "http://www.citypopulation.de/world/Agglomerations.html" ,
+                                    "http://www.mongabay.com/cities_urban_01.htm" ,
+                                    "http://en.wikipedia.org/wiki/Urban_agglomeration" ,
+                                    "http://www.worldtimezone.com/standard.html"]
+        jsonFile["metros"] = []
+        jsonFile["routes"] = []
+        for key in self.listOfMetros:
+            dict = {"code": self.listOfMetros[key].code,
+                    "name": self.listOfMetros[key].name,
+                    "country": self.listOfMetros[key].country,
+                    "continent": self.listOfMetros[key].continent,
+                    "timezone": self.listOfMetros[key].timezone,
+                    "coordinates": self.listOfMetros[key].coordinates,
+                    "population": self.listOfMetros[key].population,
+                    "region": self.listOfMetros[key].region
+                    }          
+            jsonFile["metros"].append(dict)
+        for route in self.listOfRoutes:
+            portList = [route.origin.code, route.destination.code]
+            dict = {"ports": portList,
+                    "distance": route.distance
+                    }
+            jsonFile["routes"].append(dict)                
+        with open(fileName, 'a') as outfile:
+            json.dump(jsonFile, outfile, indent=4, separators = (',',':'))
+        print jsonFile
+        
+    def calculate_distance_cost_and_time(self):
+        '''
+        Calculates the distance, cost, and time to travel to user specified locations in one trip
+        '''
+        travel_list = []
+        user_input = raw_input("Where are you currently? ")
+        origin = user_input
+        while(user_input!="exit"):
+            user_input= raw_input("Where would you like to travel? ")
+            if self.listOfMetros.has_key(user_input):
+                travel_list.append(user_input)
+            elif (user_input!="exit"):
+                print "Please enter a valid location. Type 'exit' to complete your list."
+        if not self.is_valid_path(origin, travel_list):
+            print "This is not a valid path"
+            return
+        distance = self.calculate_distance(origin, travel_list)
+        cost = self.calculate_cost(origin, travel_list)
+        time = self.calculate_time(origin, travel_list)
+        print "The total distance of your trip is", str(distance) + " kilometers."
+        print "The total cost of your trip is", str(cost) + " dollars."
+        print "The total time for your trip is", str(time) + " minutes."
+    
+    def is_valid_path(self, origin, travel_list):
+        '''
+        checks if a specified path is valid
+        '''    
+        current = origin
+        for location in travel_list:
+            currentCity = self.listOfMetros[current]
+            destinationCity = self.listOfMetros[location]
+            if not currentCity.routes.has_key(destinationCity.code):
+                return False
+            current = location
+        return True
+        
+    def calculate_distance(self, origin, travel_list):
+        '''
+        returns the total distance of a travel_list
+        '''
+        total_len = 0
+        current = origin
+        if len(travel_list) == 0:
+            return total_len
+        for location in travel_list:
+            currentCity = self.listOfMetros[current]
+            destinationCity = self.listOfMetros[location]
+            total_len += currentCity.routes[destinationCity.code].distance
+            current = location
+        return total_len
+    
+    def calculate_cost(self, origin, travel_list):
+        '''
+        returns the total cost of a travel_list
+        '''
+        leg_num = 0
+        current = origin
+        total_cost = 0
+        if len(travel_list) == 0:
+            return total_cost
+        for location in travel_list:
+            if leg_num > 7:
+                leg_num = 7
+            currentCity = self.listOfMetros[current]
+            destinationCity = self.listOfMetros[location]
+            total_cost += (currentCity.routes[destinationCity.code].distance) * (.35-.05*leg_num)
+            leg_num+=1
+            current = location
+        return total_cost
+    
+    def calculate_time(self, origin, travel_list):
+        '''
+        returns the total travel time of the travel_list
+        '''
+        current = origin
+        total_time = 0.0
+        first_leg = True
+        if len(travel_list) == 0:
+            return total_time
+        for location in travel_list:
+            currentCity = self.listOfMetros[current]
+            destinationCity = self.listOfMetros[location]
+            if not first_leg:
+                total_time += len(currentCity.routes)*10
+            distance = currentCity.routes[str(destinationCity.code)].distance
+            if distance < 400:
+                acceleration = (750.0**2.0)/(distance)
+                total_time += (2.0*((distance/acceleration)**.5))*60.0
+            else:
+                acceleration = (750.0**2.0)/(2.0*200.0)
+                distance -= 400.0
+                total_time += (2.0*((400.0/acceleration)**.5))*60.0
+                total_time += (distance/750.0)*60.0
+            current = location
+            first_leg = False
+        return total_time
+            
+    def calculate_shortest_path(self):
+        origin = raw_input("Where are you currently? ")
+        destination = raw_input("What is your destination? ")
+        travel_list = []
+        unvisited = copy.deepcopy(self.listOfMetros)
+        current = unvisited[origin]
+        destination = self.listOfMetros[destination]
+        current.djikstras_distance = 0
+        while (len(unvisited)!=0):
+            best = unvisited[unvisited.keys()[0]]
+            for node in unvisited:
+                node = unvisited[node]
+                if (node.djikstras_distance < best.djikstras_distance):
+                    best = node            
+            current = best
+            if (current.djikstras_distance == float('+inf')):
+                return
+            current.djikstras_visit = True
+            if current.name == destination.name:
+                print current.djikstras_distance
+                break
+            del unvisited[current.name]     
+            
+            for route in current.routes:
+                route = current.routes[route]
+                if (not route.destination.djikstras_visit and
+                    current.djikstras_distance+route.distance < route.destination.djikstras_distance):
+                    route.destination.prev = current
+                    route.destination.djikstras_distance = current.djikstras_distance+route.distance            
+        current = unvisited[destination.name]
+        while (current.prev != None):
+            travel_list.append(current.name)
+            current = current.prev
+        travel_list.reverse()
+        print travel_list 
+        distance = self.calculate_distance(origin, travel_list)
+        cost = self.calculate_cost(origin, travel_list)
+        time = self.calculate_time(origin, travel_list)
+        print "The total distance of your trip is", str(distance) + " kilometers."
+        print "The total cost of your trip is", str(cost) + " dollars."
+        print "The total time for your trip is", str(time) + " minutes."
+                    
+
+        
+
+            
+              
+                    
+                    
+                      

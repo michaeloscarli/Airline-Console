@@ -1,0 +1,66 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Mon Feb 24 14:00:45 2014
+
+@author: Oscar
+"""
+
+import json
+import fileinput
+import Graph
+import sys
+from Graph import Network
+
+
+'''
+Prints the options available to the user upon menu startup
+'''
+def printOptions():
+    options = [str(x) + ". " + commands[x][0] for x in range(0, len(commands))]
+    print '\n'.join(options)  
+    
+def exitLoop():
+    '''    
+    Exits the while loop by calling system's exit function
+    '''
+    print "Thank you for using CSAir!"
+    sys.exit()
+  
+
+
+'''
+The main code that is actually executed
+'''
+CSAir = Network('map_data.json')
+
+#A list of commands that includes the text printed for the query, and the function called as a result of selecting that query
+
+commands = [["Print serviced cities.", CSAir.printCities],
+            ["Print a list of serviced continents with their serviced cities", CSAir.printContinentsAndCities],
+            ["Print city information.", CSAir.printCityInformation],
+            ["Print the longest flight.", CSAir.printLongestFlight],
+            ["Print the shortest flight.", CSAir.printShortestFlight],
+            ["Print the average flight distance.", CSAir.printAverageFlightDistance],
+            ["Print the largest city (by population) serviced.", CSAir.printCityWithLargestPop],
+            ["Print the smallest city (by population) serviced.", CSAir.printCityWithSmallestPop],
+            ["Print the average population of cities serviced.", CSAir.printAverageCityPop],
+            ["Print CSAir's hub cities.", CSAir.printHubCities],
+            ["Open a map of CSAir's service routes.", CSAir.openRouteMap],
+            ["Exit", exitLoop]
+            ]
+    
+print "Welcome to the CSAir menu!"
+userQuery = ""      #The buffer that holds the user input
+while (1):
+    printOptions()
+    userQuery = raw_input("Please enter the number that matches your query. ")
+    try:
+        userQuery = int(userQuery)
+        commands[userQuery][1]()
+    except SystemExit as e:
+        sys.exit()
+    except:
+        print ("Please enter a valid input")
+       
+        
+    
